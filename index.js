@@ -4,6 +4,11 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const createError = require("http-errors");
+const registerRouter = require('./router/registerRoute');
+const forgotRouter = require('./router/loginRoute');
+const connectdb = require('./db/db');
+connectdb();
 
 const app = express();
 require('dotenv').config()
@@ -46,10 +51,11 @@ function generateRefreshToken(user) {
 // Login endpoint
 app.post('/login', (req, res) => {
   console.log("lof=gin area");
-  const { username } = req.body;
-  if (!username) return res.status(400).send('Username is required');
+  const { email } = req.body;
+  console.log("email", email)
+  if (!email) return res.status(400).send('Username is required');
 
-  const user = { name: username };
+  const user = { name: email };
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
@@ -58,7 +64,7 @@ app.post('/login', (req, res) => {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
   });
-  console.log("username", req.body , accessToken , "refresh", refreshToken);
+  console.log("email", req.body , accessToken , "refresh", refreshToken);
 
 
   res.json({ accessToken , refreshToken });
@@ -116,6 +122,26 @@ app.post('/logout', (req, res) => {
   res.clearCookie('refreshToken');
   res.sendStatus(204);
 });
+
+app.use('/register', registerRouter);
+app.use('/forgotPassword',forgotRouter);
+
+
+app.use((req,res,next)=> {
+  next(createError(404, 'entered url not found'));
+});
+
+app.use((err, req, res, next) => {
+  console.error('Error occurred:', err);
+  res.status(err.status || 500).send({
+    error: {
+      status: err.status || 500,
+      message: err.message,
+      // stack: err.stack
+    }
+  });
+});
+
 
 // Start server
 app.listen(port ,()=>{
